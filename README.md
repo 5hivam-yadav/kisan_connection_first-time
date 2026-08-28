@@ -105,3 +105,4 @@ Visit **`http://localhost:5173`** in your browser.
 ---
 
 © 2026 KisanConnect Platform. Dedicated to Indian Agriculture.
+# kisan_connection_first-time
