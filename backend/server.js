@@ -37,14 +37,33 @@ app.use((req, res, next) => {
   next();
 });
 
-// MongoDB is required for all application data. Keep the API available enough
-// to return a clear error while Atlas reconnects instead of letting requests hang.
-app.use('/api', (req, res, next) => {
-  if (req.path === '/health' || getDbStatus()) return next();
-  return res.status(503).json({
-    success: false,
-    message: 'Database is temporarily unavailable. Please try again shortly.'
-  });
+// Cached DB connection promise — reused across serverless invocations in the same container.
+// This fixes the cold-start race condition where requests arrive before connectDB() finishes.
+let dbPromise = null;
+
+const ensureDb = () => {
+  if (getDbStatus()) return Promise.resolve(); // already connected
+  if (!dbPromise) {
+    dbPromise = connectDB().catch((err) => {
+      dbPromise = null; // reset so next request retries
+      throw err;
+    });
+  }
+  return dbPromise;
+};
+
+// Await DB connection on every request (no-op if already connected)
+app.use('/api', async (req, res, next) => {
+  if (req.path === '/health') return next();
+  try {
+    await ensureDb();
+    next();
+  } catch {
+    return res.status(503).json({
+      success: false,
+      message: 'Database is temporarily unavailable. Please try again shortly.'
+    });
+  }
 });
 
 // API Routes
@@ -80,11 +99,6 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Connect to MongoDB once (works for both local and Vercel serverless)
-connectDB().catch(() => {
-  console.error('Initial MongoDB connection failed. Reconnection will be attempted on each request.');
-});
-
 // For local development: start the HTTP server
 if (process.env.NODE_ENV !== 'production') {
   app.listen(PORT, () => {
@@ -94,3 +108,4 @@ if (process.env.NODE_ENV !== 'production') {
 
 // Export for Vercel serverless
 export default app;
+
