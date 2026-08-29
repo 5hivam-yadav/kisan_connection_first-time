@@ -23,7 +23,7 @@ export const protect = async (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    const user = dataStore.findUserById(decoded.id);
+    const user = await dataStore.findUserById(decoded.id);
     if (!user) {
       return res.status(401).json({ success: false, message: 'User no longer exists' });
     }

@@ -2,7 +2,7 @@ export const seedUsers = [
   // 15+ Farmers
   {
     _id: "usr_farmer_01",
-    name: "Rameshwar Patil",
+    name: "Shivam yadav",
     phone: "9822012345",
     email: "rameshwar.patil@kisan.in",
     password: "password123",
@@ -556,7 +556,7 @@ export const seedListings = [
   {
     _id: "list_001",
     farmerId: "usr_farmer_01",
-    farmerName: "Rameshwar Patil",
+    farmerName: "Shivam yadav",
     farmerPhone: "9822012345",
     farmerRating: 4.9,
     farmerVerified: true,
@@ -1096,7 +1096,7 @@ export const seedListings = [
   {
     _id: "list_016",
     farmerId: "usr_farmer_01",
-    farmerName: "Rameshwar Patil",
+    farmerName: "Shivam yadav",
     farmerPhone: "9822012345",
     farmerRating: 4.9,
     farmerVerified: true,
@@ -1739,7 +1739,7 @@ export const seedPosts = [
   {
     _id: "post_001",
     authorId: "usr_farmer_01",
-    authorName: "Rameshwar Patil",
+    authorName: "Shivam yadav",
     authorRole: "farmer",
     authorLocation: "Nashik, Maharashtra",
     authorAvatar: "https://images.unsplash.com/photo-1595152772835-219674b2a8a6?w=200&auto=format&fit=crop&q=80",
@@ -1763,7 +1763,7 @@ export const seedPosts = [
       },
       {
         userId: "usr_farmer_01",
-        userName: "Rameshwar Patil",
+        userName: "Shivam yadav",
         userRole: "farmer",
         userAvatar: "https://images.unsplash.com/photo-1595152772835-219674b2a8a6?w=200&auto=format&fit=crop&q=80",
         userLocation: "Nashik, Maharashtra",
@@ -2103,7 +2103,7 @@ export const seedPosts = [
   {
     _id: "post_016",
     authorId: "usr_farmer_01",
-    authorName: "Rameshwar Patil",
+    authorName: "Shivam yadav",
     authorRole: "farmer",
     authorLocation: "Nashik, Maharashtra",
     authorAvatar: "https://images.unsplash.com/photo-1595152772835-219674b2a8a6?w=200&auto=format&fit=crop&q=80",
@@ -2215,7 +2215,7 @@ export const seedInquiries = [
     buyerBusiness: "AgriFresh Wholesale Logistics, Vashi APMC",
     buyerPhone: "9811012345",
     farmerId: "usr_farmer_01",
-    farmerName: "Rameshwar Patil",
+    farmerName: "Shivam yadav",
     listingId: "list_001",
     cropName: "Nashik Red Onion",
     cropImage: "https://images.unsplash.com/photo-1618512496248-a07fe83aa8cb?w=600&auto=format&fit=crop&q=80",
@@ -2237,7 +2237,7 @@ export const seedInquiries = [
       },
       {
         senderId: "usr_farmer_01",
-        senderName: "Rameshwar Patil",
+        senderName: "Shivam yadav",
         senderRole: "farmer",
         offeredPrice: 1820,
         message: "Singhania ji, quality is 100% export grade and double cured. Best I can do is ₹1,820/Qtl with direct loading.",
@@ -2336,7 +2336,7 @@ export const seedMessages = [
   {
     _id: "msg_002",
     senderId: "usr_farmer_01",
-    senderName: "Rameshwar Patil",
+    senderName: "Shivam yadav",
     receiverId: "usr_buyer_01",
     inquiryId: "inq_001",
     listingId: "list_001",
@@ -2373,7 +2373,7 @@ export const seedReviews = [
     listingId: "list_001",
     rating: 5,
     categories: { communication: 5, productQuality: 5, reliability: 5, accuracy: 5 },
-    comment: "Rameshwar Patil delivered exceptionally cured Nashik onions. Calibration and moisture were exactly as described. Prompt communication and seamless farm pickup.",
+    comment: "Shivam yadav delivered exceptionally cured Nashik onions. Calibration and moisture were exactly as described. Prompt communication and seamless farm pickup.",
     createdAt: new Date("2026-08-15")
   },
   {
@@ -2391,7 +2391,7 @@ export const seedReviews = [
   {
     _id: "rev_003",
     reviewerId: "usr_farmer_01",
-    reviewerName: "Rameshwar Patil",
+    reviewerName: "Shivam yadav",
     reviewerRole: "farmer",
     reviewedUserId: "usr_buyer_01",
     listingId: "list_001",

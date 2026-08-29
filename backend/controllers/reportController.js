@@ -7,7 +7,7 @@ export const createReport = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Target ID, type, reason and description are required' });
     }
 
-    const report = dataStore.createReport({
+    const report = await dataStore.createReport({
       reporterId: req.user._id,
       reporterName: req.user.name,
       targetId,

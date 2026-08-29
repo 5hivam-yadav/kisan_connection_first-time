@@ -2,7 +2,7 @@ import { dataStore } from '../services/dataStore.js';
 
 export const getListings = async (req, res) => {
   try {
-    const listings = dataStore.getListings(req.query);
+    const listings = await dataStore.getListings(req.query);
     res.status(200).json({
       success: true,
       count: listings.length,
@@ -15,14 +15,14 @@ export const getListings = async (req, res) => {
 
 export const getListingById = async (req, res) => {
   try {
-    const listing = dataStore.getListingById(req.params.id);
+    const listing = await dataStore.getListingById(req.params.id);
     if (!listing) {
       return res.status(404).json({ success: false, message: 'Crop listing not found' });
     }
 
     // Attach matching Mandi price & comparison stats
-    const matchingPrice = dataStore.getPriceByCrop(listing.cropName);
-    const farmerInfo = dataStore.findUserById(listing.farmerId);
+    const matchingPrice = await dataStore.getPriceByCrop(listing.cropName);
+    const farmerInfo = await dataStore.findUserById(listing.farmerId);
 
     res.status(200).json({
       success: true,
@@ -76,7 +76,7 @@ export const createListing = async (req, res) => {
       'https://images.unsplash.com/photo-1518977676601-b53f82aba655?w=600&auto=format&fit=crop&q=80'
     ];
 
-    const newListing = dataStore.createListing({
+    const newListing = await dataStore.createListing({
       farmerId: farmer._id,
       farmerName: farmer.name,
       farmerPhone: farmer.phone,
@@ -111,7 +111,7 @@ export const createListing = async (req, res) => {
 
 export const updateListing = async (req, res) => {
   try {
-    const listing = dataStore.getListingById(req.params.id);
+    const listing = await dataStore.findListingById(req.params.id);
     if (!listing) {
       return res.status(404).json({ success: false, message: 'Listing not found' });
     }
@@ -120,7 +120,7 @@ export const updateListing = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Not authorized to modify this listing' });
     }
 
-    const updated = dataStore.updateListing(req.params.id, req.body);
+    const updated = await dataStore.updateListing(req.params.id, req.body);
     res.status(200).json({
       success: true,
       message: 'Listing updated successfully',
@@ -133,13 +133,13 @@ export const updateListing = async (req, res) => {
 
 export const toggleListingStatus = async (req, res) => {
   try {
-    const listing = dataStore.getListingById(req.params.id);
+    const listing = await dataStore.findListingById(req.params.id);
     if (!listing) {
       return res.status(404).json({ success: false, message: 'Listing not found' });
     }
 
     const newStatus = listing.status === 'active' ? 'paused' : 'active';
-    const updated = dataStore.updateListing(req.params.id, { status: newStatus });
+    const updated = await dataStore.updateListing(req.params.id, { status: newStatus });
 
     res.status(200).json({
       success: true,
@@ -153,7 +153,7 @@ export const toggleListingStatus = async (req, res) => {
 
 export const deleteListing = async (req, res) => {
   try {
-    const listing = dataStore.getListingById(req.params.id);
+    const listing = await dataStore.findListingById(req.params.id);
     if (!listing) {
       return res.status(404).json({ success: false, message: 'Listing not found' });
     }
@@ -162,7 +162,7 @@ export const deleteListing = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Not authorized to delete this listing' });
     }
 
-    dataStore.deleteListing(req.params.id);
+    await dataStore.deleteListing(req.params.id);
     res.status(200).json({
       success: true,
       message: 'Listing deleted successfully'

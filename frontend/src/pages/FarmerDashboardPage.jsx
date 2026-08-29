@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -28,6 +28,9 @@ export const FarmerDashboardPage = () => {
   const { user } = useAuth();
   const { t } = useLanguage();
   const { showToast } = useNotification();
+  const [searchParams] = useSearchParams();
+  const inquiryIdFromNotification = searchParams.get('inquiry');
+  const inquiryRefs = useRef({});
 
   const [listings, setListings] = useState([]);
   const [inquiries, setInquiries] = useState([]);
@@ -35,6 +38,7 @@ export const FarmerDashboardPage = () => {
   const [selectedInquiry, setSelectedInquiry] = useState(null);
   const [counterPrice, setCounterPrice] = useState('');
   const [negotiateMessage, setNegotiateMessage] = useState('');
+  const [highlightedInquiry, setHighlightedInquiry] = useState(null);
 
   const fetchFarmerData = async () => {
     setLoading(true);
@@ -55,6 +59,16 @@ export const FarmerDashboardPage = () => {
   useEffect(() => {
     fetchFarmerData();
   }, [user]);
+
+  useEffect(() => {
+    if (!inquiryIdFromNotification || !inquiries.some((inquiry) => inquiry._id === inquiryIdFromNotification)) return;
+
+    const target = inquiryRefs.current[inquiryIdFromNotification];
+    target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setHighlightedInquiry(inquiryIdFromNotification);
+    const timer = setTimeout(() => setHighlightedInquiry(null), 3500);
+    return () => clearTimeout(timer);
+  }, [inquiries, inquiryIdFromNotification]);
 
   const handleToggleStatus = async (id) => {
     try {
@@ -108,7 +122,7 @@ export const FarmerDashboardPage = () => {
         <div className="space-y-1.5">
           <div className="flex items-center space-x-2">
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-              Namaste, {user?.name || 'Rameshwar Patil'}! 👨‍🌾
+              Namaste, {user?.name || 'Shivam yadav'}! 👨‍🌾
             </h1>
             <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-white/20 text-emerald-100 border border-white/30">
               Verified Farmer
@@ -178,7 +192,13 @@ export const FarmerDashboardPage = () => {
             {inquiries.map((inq) => (
               <div
                 key={inq._id}
+                ref={(node) => {
+                  if (node) inquiryRefs.current[inq._id] = node;
+                }}
                 className={`p-4 rounded-2xl border transition-all space-y-3 ${
+                  highlightedInquiry === inq._id
+                    ? 'border-emerald-500 bg-emerald-50 ring-4 ring-emerald-100'
+                    :
                   inq.status === 'accepted'
                     ? 'border-emerald-200 bg-emerald-50/40'
                     : inq.status === 'negotiating'

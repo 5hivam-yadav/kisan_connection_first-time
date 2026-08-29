@@ -3,7 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { connectDB } from './config/db.js';
+import { connectDB, getDbStatus } from './config/db.js';
 
 import authRoutes from './routes/authRoutes.js';
 import farmerRoutes from './routes/farmerRoutes.js';
@@ -35,6 +35,16 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} [${req.method}] ${req.url}`);
   next();
+});
+
+// MongoDB is required for all application data. Keep the API available enough
+// to return a clear error while Atlas reconnects instead of letting requests hang.
+app.use('/api', (req, res, next) => {
+  if (req.path === '/health' || getDbStatus()) return next();
+  return res.status(503).json({
+    success: false,
+    message: 'Database is temporarily unavailable. Please try again shortly.'
+  });
 });
 
 // API Routes
@@ -72,7 +82,14 @@ app.use((err, req, res, next) => {
 
 // Start Server
 const startServer = async () => {
-  await connectDB();
+  try {
+    await connectDB();
+  } catch {
+    console.error('Starting API without database access. MongoDB reconnection will continue in the background.');
+    setInterval(() => {
+      if (!getDbStatus()) connectDB().catch(() => {});
+    }, 30000);
+  }
   app.listen(PORT, () => {
     console.log(`🌾 KisanConnect Backend Server running on http://localhost:${PORT}`);
   });

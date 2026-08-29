@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { Navbar } from './components/common/Navbar';
 import { Footer } from './components/common/Footer';
 import { MobileBottomNav } from './components/common/MobileBottomNav';
-import { RoleSwitcherModal } from './components/common/RoleSwitcherModal';
 import { ProtectedRoute } from './components/common/ProtectedRoute';
 
 // Pages
@@ -27,18 +26,16 @@ import { ContactPage } from './pages/ContactPage';
 import { FaqPage } from './pages/FaqPage';
 
 export function App() {
-  const [roleSwitcherOpen, setRoleSwitcherOpen] = useState(false);
-
   return (
     <div className="min-h-screen flex flex-col bg-earth-50/50 text-slate-900 selection:bg-emerald-500 selection:text-white">
       
       {/* Top Navbar */}
-      <Navbar onOpenRoleSwitcher={() => setRoleSwitcherOpen(true)} />
+      <Navbar />
 
       {/* Main Content Area */}
       <main className="flex-1">
         <Routes>
-          <Route path="/" element={<HomePage onOpenRoleSwitcher={() => setRoleSwitcherOpen(true)} />} />
+          <Route path="/" element={<HomePage />} />
           <Route path="/marketplace" element={<MarketplacePage />} />
           <Route path="/listings/:id" element={<CropDetailsPage />} />
           <Route path="/price-discovery" element={<PriceDiscoveryPage />} />
@@ -48,7 +45,7 @@ export function App() {
           <Route path="/saved-listings" element={<SavedListingsPage />} />
           <Route path="/chat" element={<ChatPage />} />
 
-          <Route path="/login" element={<LoginPage onOpenRoleSwitcher={() => setRoleSwitcherOpen(true)} />} />
+          <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/contact" element={<ContactPage />} />
@@ -79,12 +76,6 @@ export function App() {
 
       {/* Mobile Fixed Bottom Bar */}
       <MobileBottomNav />
-
-      {/* Universal 1-Click Role Switcher Modal */}
-      <RoleSwitcherModal
-        isOpen={roleSwitcherOpen}
-        onClose={() => setRoleSwitcherOpen(false)}
-      />
 
     </div>
   );

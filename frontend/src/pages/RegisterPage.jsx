@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
-import { Sprout, Phone, Lock, User, MapPin, Building, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { Sprout, Phone, Lock, User, MapPin, Building, ShieldCheck, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 import api from '../services/api';
 import confetti from 'canvas-confetti';
 
@@ -13,14 +13,14 @@ export const RegisterPage = () => {
   const [searchParams] = useSearchParams();
 
   const [role, setRole] = useState(searchParams.get('role') || 'farmer');
-  const [step, setStep] = useState(1); // 1: Info, 2: OTP Verification
+  const [step, setStep] = useState(1); // 1: Info, 2: Email verification
   const [submitting, setSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
     email: '',
-    password: 'password123',
+    password: '',
     language: 'en',
     state: 'Maharashtra',
     district: 'Nashik',
@@ -31,23 +31,31 @@ export const RegisterPage = () => {
     buyerType: 'Wholesaler'
   });
 
-  const [otp, setOtp] = useState('123456');
+  const [otp, setOtp] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSendOtp = async (e) => {
     e.preventDefault();
-    if (!formData.phone || formData.phone.length < 10) {
+    if (!formData.phone || formData.phone.replace(/\D/g, '').length !== 10) {
       alert("Please enter a valid 10-digit mobile number.");
+      return;
+    }
+    if (!formData.email) {
+      alert('Please enter your email address for verification.');
       return;
     }
 
     try {
-      const res = await api.post('/auth/send-otp', { phone: formData.phone });
+      setSubmitting(true);
+      const res = await api.post('/auth/send-otp', { email: formData.email });
       if (res.success) {
-        showToast("OTP Sent", `Verification code sent to +91 ${formData.phone} (Demo: 123456)`);
+        showToast("Verification code sent", `Check ${formData.email} for your 6-digit code.`);
         setStep(2);
       }
     } catch (err) {
       showToast("Error", err.message, "error");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -55,6 +63,7 @@ export const RegisterPage = () => {
     e.preventDefault();
     setSubmitting(true);
     try {
+      const verification = await api.post('/auth/verify-otp', { email: formData.email, otp });
       const res = await register({
         name: formData.name,
         phone: formData.phone,
@@ -70,7 +79,8 @@ export const RegisterPage = () => {
         },
         farmSize: Number(formData.farmSize),
         businessName: formData.businessName,
-        buyerType: formData.buyerType
+        buyerType: formData.buyerType,
+        verificationToken: verification.verificationToken
       });
 
       if (res.success) {
@@ -136,7 +146,7 @@ export const RegisterPage = () => {
               <input
                 type="text"
                 required
-                placeholder="e.g. Rameshwar Patil"
+                placeholder="e.g. Shivam yadav"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 className="w-full p-2.5 rounded-xl border border-slate-200 text-xs focus:ring-1 focus:ring-emerald-500 outline-none font-semibold"
@@ -157,9 +167,10 @@ export const RegisterPage = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Email Address</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Email Address *</label>
                 <input
                   type="email"
+                  required
                   placeholder="farmer@kisan.in"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
@@ -231,20 +242,32 @@ export const RegisterPage = () => {
 
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">Create Password *</label>
-              <input
-                type="password"
-                required
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                className="w-full p-2.5 rounded-xl border border-slate-200 text-xs outline-none"
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  minLength="8"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  className="w-full p-2.5 pr-10 rounded-xl border border-slate-200 text-xs outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-2.5 text-slate-400 hover:text-emerald-600"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
 
             <button
               type="submit"
+              disabled={submitting}
               className="w-full py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-emerald-600/30 transition-all"
             >
-              Verify Mobile via OTP →
+              {submitting ? 'Sending code...' : 'Verify Email via OTP →'}
             </button>
 
           </form>
@@ -252,9 +275,9 @@ export const RegisterPage = () => {
           /* Step 2: OTP Verification */
           <form onSubmit={handleVerifyAndRegister} className="space-y-4">
             <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-200 text-xs text-emerald-950 space-y-1">
-              <span className="font-bold">📱 OTP Verification Sent:</span>
-              <p>We sent a 6-digit SMS verification code to <strong>+91 {formData.phone}</strong>.</p>
-              <p className="text-[11px] text-emerald-700 font-semibold">(Use Demo Code: 123456)</p>
+              <span className="font-bold">✉️ Verification code sent:</span>
+              <p>We sent a 6-digit verification code to <strong>{formData.email}</strong>.</p>
+              <p className="text-[11px] text-emerald-700 font-semibold">The code expires in 10 minutes.</p>
             </div>
 
             <div>
@@ -263,7 +286,7 @@ export const RegisterPage = () => {
                 type="text"
                 required
                 maxLength="6"
-                placeholder="123456"
+                placeholder="Enter code"
                 value={otp}
                 onChange={(e) => setOtp(e.target.value)}
                 className="w-full p-3 rounded-2xl border-2 border-emerald-400 text-center text-lg font-extrabold tracking-widest outline-none"

@@ -3,7 +3,7 @@ import { dataStore } from '../services/dataStore.js';
 export const getReviews = async (req, res) => {
   try {
     const { userId } = req.params;
-    const reviews = dataStore.getReviewsForUser(userId);
+    const reviews = await dataStore.getReviewsForUser(userId);
     res.status(200).json({
       success: true,
       count: reviews.length,
@@ -23,7 +23,7 @@ export const createReview = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Reviewed user, rating and comment are required' });
     }
 
-    const review = dataStore.createReview({
+    const review = await dataStore.createReview({
       reviewerId: reviewer._id,
       reviewerName: reviewer.name,
       reviewerRole: reviewer.role,

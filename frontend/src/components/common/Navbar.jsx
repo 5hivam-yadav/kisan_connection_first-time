@@ -18,11 +18,10 @@ import {
   MapPin, 
   ShieldCheck, 
   ChevronDown,
-  CheckCircle2,
-  SlidersHorizontal
+  CheckCircle2
 } from 'lucide-react';
 
-export const Navbar = ({ onOpenRoleSwitcher }) => {
+export const Navbar = () => {
   const { user, isAuthenticated, isFarmer, isBuyer, isAdmin, logout } = useAuth();
   const { currentLang, languages, changeLanguage, t } = useLanguage();
   const { notifications, unreadCount, markAsRead, markAllRead } = useNotification();
@@ -108,20 +107,6 @@ export const Navbar = ({ onOpenRoleSwitcher }) => {
 
           {/* Right Action Icons & Auth */}
           <div className="flex items-center space-x-2 md:space-x-3">
-
-            {/* Role Demo Switcher Badge / Button */}
-            <button
-              onClick={onOpenRoleSwitcher}
-              className="hidden sm:inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 transition-colors shadow-sm"
-              title="Switch demo role between Farmer, Buyer, Admin, Guest"
-            >
-              <SlidersHorizontal className="w-3.5 h-3.5 text-amber-600" />
-              <span>
-                {isAuthenticated
-                  ? (isFarmer ? '👨‍🌾 Farmer' : isBuyer ? '🏢 Buyer' : '🛡️ Admin')
-                  : '🎭 Demo Switcher'}
-              </span>
-            </button>
 
             {/* Language Selector Dropdown */}
             <div className="relative" ref={langRef}>
@@ -436,16 +421,6 @@ export const Navbar = ({ onOpenRoleSwitcher }) => {
           </NavLink>
 
           <div className="pt-3 border-t border-slate-100 flex flex-col space-y-2">
-            <button
-              onClick={() => {
-                setMobileMenuOpen(false);
-                onOpenRoleSwitcher();
-              }}
-              className="w-full py-2 px-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-bold text-center"
-            >
-              🎭 Switch Demo Persona (Farmer / Buyer / Admin)
-            </button>
-
             {!isAuthenticated ? (
               <div className="grid grid-cols-2 gap-2 pt-2">
                 <Link

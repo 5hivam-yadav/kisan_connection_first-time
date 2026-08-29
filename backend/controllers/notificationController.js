@@ -2,7 +2,7 @@ import { dataStore } from '../services/dataStore.js';
 
 export const getNotifications = async (req, res) => {
   try {
-    const notifs = dataStore.getNotifications(req.user._id);
+    const notifs = await dataStore.getNotifications(req.user._id);
     const unreadCount = notifs.filter(n => !n.read).length;
     res.status(200).json({
       success: true,
@@ -17,7 +17,7 @@ export const getNotifications = async (req, res) => {
 
 export const markAsRead = async (req, res) => {
   try {
-    const notif = dataStore.markNotificationAsRead(req.params.id);
+    const notif = await dataStore.markNotificationAsRead(req.params.id);
     res.status(200).json({
       success: true,
       notification: notif
@@ -29,7 +29,7 @@ export const markAsRead = async (req, res) => {
 
 export const markAllAsRead = async (req, res) => {
   try {
-    dataStore.markAllAllNotificationsAsRead ? dataStore.markAllAllNotificationsAsRead(req.user._id) : dataStore.markAllNotificationsAsRead(req.user._id);
+    await dataStore.markAllNotificationsAsRead(req.user._id);
     res.status(200).json({
       success: true,
       message: 'All notifications marked as read'

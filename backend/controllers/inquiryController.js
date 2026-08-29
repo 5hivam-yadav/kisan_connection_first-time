@@ -3,7 +3,7 @@ import { dataStore } from '../services/dataStore.js';
 export const getInquiries = async (req, res) => {
   try {
     const user = req.user;
-    const inquiries = dataStore.getInquiriesByUser(user._id, user.role);
+    const inquiries = await dataStore.getInquiriesByUser(user._id, user.role);
     res.status(200).json({
       success: true,
       count: inquiries.length,
@@ -17,9 +17,12 @@ export const getInquiries = async (req, res) => {
 export const createInquiry = async (req, res) => {
   try {
     const buyer = req.user;
+    if (buyer.role !== 'buyer') {
+      return res.status(403).json({ success: false, message: 'Only buyers can create purchase inquiries' });
+    }
     const { listingId, requestedQuantity, proposedPrice, requiredDeliveryDate, message } = req.body;
 
-    const listing = dataStore.getListingById(listingId);
+    const listing = await dataStore.findListingById(listingId);
     if (!listing) {
       return res.status(404).json({ success: false, message: 'Crop listing not found' });
     }
@@ -28,7 +31,7 @@ export const createInquiry = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Quantity, proposed price and message are required' });
     }
 
-    const inquiry = dataStore.createInquiry({
+    const inquiry = await dataStore.createInquiry({
       buyerId: buyer._id,
       buyerName: buyer.name,
       buyerBusiness: buyer.businessName || 'Verified Buyer',
@@ -61,9 +64,15 @@ export const updateInquiryStatus = async (req, res) => {
     const { id } = req.params;
     const { status, counterPrice, message } = req.body;
 
-    const existing = dataStore.getInquiryById(id);
+    const existing = await dataStore.getInquiryById(id);
     if (!existing) {
       return res.status(404).json({ success: false, message: 'Inquiry not found' });
+    }
+    if (req.user.role !== 'farmer' || existing.farmerId !== req.user._id) {
+      return res.status(403).json({ success: false, message: 'Only the listing farmer can update this inquiry' });
+    }
+    if (!['accepted', 'rejected', 'negotiating'].includes(status)) {
+      return res.status(400).json({ success: false, message: 'Invalid inquiry status' });
     }
 
     let negotiationMessage = null;
@@ -77,7 +86,7 @@ export const updateInquiryStatus = async (req, res) => {
       };
     }
 
-    const updated = dataStore.updateInquiryStatus(id, status, negotiationMessage);
+    const updated = await dataStore.updateInquiryStatus(id, status, negotiationMessage);
 
     res.status(200).json({
       success: true,

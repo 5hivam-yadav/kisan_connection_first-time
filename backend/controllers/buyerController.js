@@ -3,7 +3,7 @@ import { dataStore } from '../services/dataStore.js';
 export const getBuyers = async (req, res) => {
   try {
     const { buyerType, state } = req.query;
-    let buyers = dataStore.getAllBuyers();
+    let buyers = await dataStore.getAllBuyers();
 
     if (buyerType && buyerType !== 'All') {
       buyers = buyers.filter(b => b.buyerType?.toLowerCase() === buyerType.toLowerCase());
@@ -25,11 +25,11 @@ export const getBuyers = async (req, res) => {
 
 export const getBuyerById = async (req, res) => {
   try {
-    const buyer = dataStore.findUserById(req.params.id);
+    const buyer = await dataStore.findUserById(req.params.id);
     if (!buyer || buyer.role !== 'buyer') {
       return res.status(404).json({ success: false, message: 'Buyer not found' });
     }
-    const reviews = dataStore.getReviewsForUser(buyer._id);
+    const reviews = await dataStore.getReviewsForUser(buyer._id);
     res.status(200).json({
       success: true,
       buyer,

@@ -2,16 +2,17 @@ import React, { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
-import { Sprout, Phone, Lock, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Sprout, Phone, Lock, ArrowRight, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 
-export const LoginPage = ({ onOpenRoleSwitcher }) => {
+export const LoginPage = () => {
   const { login } = useAuth();
   const { showToast } = useNotification();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
-  const [identifier, setIdentifier] = useState('9822012345'); // Default demo phone
-  const [password, setPassword] = useState('password123');
+  const [identifier, setIdentifier] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (e) => {
@@ -50,18 +51,6 @@ export const LoginPage = ({ onOpenRoleSwitcher }) => {
           </p>
         </div>
 
-        {/* Demo Switcher Helper Banner */}
-        <div className="p-3 bg-amber-50 rounded-2xl border border-amber-200 text-xs text-amber-900 flex items-center justify-between">
-          <span>🎭 <strong>Demo Mode:</strong> Pre-filled with demo credentials</span>
-          <button
-            type="button"
-            onClick={onOpenRoleSwitcher}
-            className="px-2.5 py-1 bg-amber-600 text-white rounded-lg font-bold text-[11px]"
-          >
-            Switch Role
-          </button>
-        </div>
-
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -84,12 +73,20 @@ export const LoginPage = ({ onOpenRoleSwitcher }) => {
             <div className="relative">
               <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 text-xs focus:ring-1 focus:ring-emerald-500 outline-none"
+                className="w-full pl-9 pr-10 py-2.5 rounded-xl border border-slate-200 text-xs focus:ring-1 focus:ring-emerald-500 outline-none"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-2.5 text-slate-400 hover:text-emerald-600"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
             </div>
           </div>
 

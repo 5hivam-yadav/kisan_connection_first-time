@@ -47,7 +47,7 @@ export const RoleSwitcherModal = ({ isOpen, onClose }) => {
             </div>
             <div className="flex-1">
               <div className="flex items-center justify-between">
-                <h4 className="font-bold text-sm text-slate-900">👨‍🌾 Farmer Persona (Rameshwar Patil)</h4>
+                <h4 className="font-bold text-sm text-slate-900">👨‍🌾 Farmer Persona (Shivam yadav)</h4>
                 {user?.role === 'farmer' && (
                   <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-600 text-white rounded-full">Active</span>
                 )}

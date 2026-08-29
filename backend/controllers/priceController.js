@@ -2,7 +2,7 @@ import { dataStore } from '../services/dataStore.js';
 
 export const getPrices = async (req, res) => {
   try {
-    const prices = dataStore.getAllPrices(req.query);
+    const prices = await dataStore.getAllPrices(req.query);
     res.status(200).json({
       success: true,
       count: prices.length,
@@ -16,7 +16,7 @@ export const getPrices = async (req, res) => {
 
 export const getPriceByCrop = async (req, res) => {
   try {
-    const priceData = dataStore.getPriceByCrop(req.params.crop);
+    const priceData = await dataStore.getPriceByCrop(req.params.crop);
     res.status(200).json({
       success: true,
       priceData,
@@ -30,8 +30,7 @@ export const getPriceByCrop = async (req, res) => {
 export const getPriceComparison = async (req, res) => {
   try {
     const { crop } = req.query;
-    const priceData = dataStore.getPriceByCrop(crop || 'Tomato');
-    const listings = dataStore.getListings({ search: crop || 'Tomato' });
+    const [priceData, listings] = await Promise.all([dataStore.getPriceByCrop(crop || 'Tomato'), dataStore.getListings({ search: crop || 'Tomato' })]);
 
     const avgPlatformPrice = listings.length > 0 
       ? Math.round(listings.reduce((sum, l) => sum + l.price, 0) / listings.length)

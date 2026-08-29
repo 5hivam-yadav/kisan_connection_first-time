@@ -36,7 +36,7 @@ KisanConnect is a modern, responsive full-stack agricultural web platform design
    - Instant UI language switching with zero page reload.
 
 7. **🎭 1-Click Demo Persona Switcher**:
-   - Instant switching between **👨‍🌾 Farmer (Rameshwar Patil)**, **🏢 Buyer (Vikram Singhania)**, and **🛡️ Admin (Krishi Bhawan Authority)** for testing and presentations.
+   - Instant switching between **👨‍🌾 Farmer (Shivam yadav)**, **🏢 Buyer (Vikram Singhania)**, and **🛡️ Admin (Krishi Bhawan Authority)** for testing and presentations.
 
 8. **🛡️ Admin & KYC Governance Center**:
    - User KYC verification manager (Approve/Reject farmer land records and buyer GST/APMC licenses).

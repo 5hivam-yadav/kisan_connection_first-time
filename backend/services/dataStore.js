@@ -1,443 +1,119 @@
-import { seedUsers, seedListings, seedPrices, seedPosts, seedInquiries, seedMessages, seedReviews, seedNotifications, seedReports } from '../data/seedData.js';
-import { v4 as uuidv4 } from 'uuid';
+import { User } from '../models/User.js';
+import { CropListing } from '../models/CropListing.js';
+import { PriceData } from '../models/PriceData.js';
+import { Inquiry } from '../models/Inquiry.js';
+import { Message } from '../models/Message.js';
+import { CommunityPost } from '../models/CommunityPost.js';
+import { Review } from '../models/Review.js';
+import { Notification } from '../models/Notification.js';
+import { Report } from '../models/Report.js';
+import { FarmerProfile } from '../models/FarmerProfile.js';
+import { BuyerProfile } from '../models/BuyerProfile.js';
 
-// In-Memory Data Store (High-speed state)
-class DataStore {
-  constructor() {
-    this.users = JSON.parse(JSON.stringify(seedUsers));
-    this.listings = JSON.parse(JSON.stringify(seedListings));
-    this.prices = JSON.parse(JSON.stringify(seedPrices));
-    this.posts = JSON.parse(JSON.stringify(seedPosts));
-    this.inquiries = JSON.parse(JSON.stringify(seedInquiries));
-    this.messages = JSON.parse(JSON.stringify(seedMessages));
-    this.reviews = JSON.parse(JSON.stringify(seedReviews));
-    this.notifications = JSON.parse(JSON.stringify(seedNotifications));
-    this.reports = JSON.parse(JSON.stringify(seedReports));
+const plain = (value) => (value ? JSON.parse(JSON.stringify(value)) : null);
+const plainList = (values) => values.map(plain);
+const sameId = (a, b) => String(a) === String(b);
+const escapedRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+class MongoDataStore {
+  async findUserByPhone(phone) { return plain(await User.findOne({ phone }).lean()); }
+  async findUserByEmail(email) { return email ? plain(await User.findOne({ email: new RegExp(`^${escapedRegex(email)}$`, 'i') }).lean()) : null; }
+  async findUserById(userId) { return plain(await User.findById(userId).lean()); }
+  async getAllFarmers() { return plainList(await User.find({ role: 'farmer' }).sort({ createdAt: -1 }).lean()); }
+  async getAllBuyers() { return plainList(await User.find({ role: 'buyer' }).sort({ createdAt: -1 }).lean()); }
+  async getRecentUsers(limit = 8) { return plainList(await User.find().sort({ createdAt: -1 }).limit(limit).lean()); }
+
+  async createUser(userData) {
+    const user = await User.create(userData);
+    if (user.role === 'farmer') await FarmerProfile.create({ userId: user._id, farmSize: userData.farmSize, crops: userData.cropsGrown || [], farmingPractices: userData.farmingPractices, location: userData.location });
+    if (user.role === 'buyer') await BuyerProfile.create({ userId: user._id, businessName: userData.businessName || user.name, buyerType: userData.buyerType, requiredCrops: userData.requiredCrops || [] });
+    return plain(user);
   }
+  async updateUser(userId, updateData) { return plain(await User.findByIdAndUpdate(userId, updateData, { new: true, runValidators: true }).lean()); }
 
-  // --- Users ---
-  findUserByPhone(phone) {
-    return this.users.find(u => u.phone === phone);
+  async getListings(filters = {}) {
+    const query = { status: filters.status || 'active' };
+    if (filters.category && filters.category !== 'All') query.category = new RegExp(`^${escapedRegex(filters.category)}$`, 'i');
+    if (filters.state && filters.state !== 'All') query['location.state'] = new RegExp(`^${escapedRegex(filters.state)}$`, 'i');
+    if (filters.district && filters.district !== 'All') query['location.district'] = new RegExp(`^${escapedRegex(filters.district)}$`, 'i');
+    if (filters.quality && filters.quality !== 'All') query.quality = new RegExp(escapedRegex(filters.quality), 'i');
+    if (filters.organicOnly === 'true' || filters.organicOnly === true) query.farmingMethod = /organic/i;
+    if (filters.verifiedOnly === 'true' || filters.verifiedOnly === true) query.farmerVerified = true;
+    if (filters.farmerId) query.farmerId = filters.farmerId;
+    if (filters.minPrice || filters.maxPrice) query.price = { ...(filters.minPrice && { $gte: Number(filters.minPrice) }), ...(filters.maxPrice && { $lte: Number(filters.maxPrice) }) };
+    if (filters.search) { const search = new RegExp(escapedRegex(filters.search), 'i'); query.$or = [{ cropName: search }, { variety: search }, { 'location.state': search }, { 'location.district': search }, { farmerName: search }, { description: search }]; }
+    const sort = filters.sortBy === 'price_asc' ? { price: 1 } : filters.sortBy === 'price_desc' ? { price: -1 } : filters.sortBy === 'quantity_desc' ? { quantity: -1 } : filters.sortBy === 'harvest_soon' ? { harvestDate: 1 } : { createdAt: -1 };
+    return plainList(await CropListing.find(query).sort(sort).lean());
   }
+  async getListingById(listingId) { return plain(await CropListing.findByIdAndUpdate(listingId, { $inc: { viewsCount: 1 } }, { new: true }).lean()); }
+  async findListingById(listingId) { return plain(await CropListing.findById(listingId).lean()); }
+  async createListing(data) { return plain(await CropListing.create(data)); }
+  async updateListing(listingId, data) { return plain(await CropListing.findByIdAndUpdate(listingId, data, { new: true, runValidators: true }).lean()); }
+  async deleteListing(listingId) { return Boolean(await CropListing.findByIdAndDelete(listingId)); }
 
-  findUserByEmail(email) {
-    if (!email) return null;
-    return this.users.find(u => u.email?.toLowerCase() === email.toLowerCase());
+  async getAllPrices(filters = {}) {
+    const query = {};
+    if (filters.crop && filters.crop !== 'All') query.crop = new RegExp(escapedRegex(filters.crop), 'i');
+    if (filters.state && filters.state !== 'All') query.state = new RegExp(`^${escapedRegex(filters.state)}$`, 'i');
+    if (filters.district && filters.district !== 'All') query.district = new RegExp(`^${escapedRegex(filters.district)}$`, 'i');
+    return plainList(await PriceData.find(query).lean());
   }
+  async getPriceByCrop(crop) { return plain(await PriceData.findOne({ crop: new RegExp(escapedRegex(crop), 'i') }).lean()); }
 
-  findUserById(id) {
-    return this.users.find(u => u._id === id);
+  async getInquiriesByUser(userId, role) { return plainList(await Inquiry.find(role === 'farmer' ? { farmerId: userId } : role === 'buyer' ? { buyerId: userId } : {}).sort({ createdAt: -1 }).lean()); }
+  async getInquiryById(inquiryId) { return plain(await Inquiry.findById(inquiryId).lean()); }
+  async createInquiry(data) {
+    const inquiry = await Inquiry.create(data);
+    await CropListing.findByIdAndUpdate(inquiry.listingId, { $inc: { inquiriesCount: 1 } });
+    await this.createNotification({ userId: inquiry.farmerId, type: 'inquiry', title: 'New Buyer Inquiry', message: `${inquiry.buyerName} sent an inquiry for ${inquiry.requestedQuantity} ${inquiry.unit} of ${inquiry.cropName}.`, link: `/farmer/inquiries?inquiry=${inquiry._id}` });
+    return plain(inquiry);
   }
-
-  getAllFarmers() {
-    return this.users.filter(u => u.role === 'farmer');
-  }
-
-  getAllBuyers() {
-    return this.users.filter(u => u.role === 'buyer');
-  }
-
-  createUser(userData) {
-    const newUser = {
-      _id: `usr_${uuidv4().slice(0, 8)}`,
-      rating: 4.8,
-      ratingCount: 1,
-      verification: { isVerified: true, status: 'verified', documents: [] },
-      createdAt: new Date(),
-      ...userData
-    };
-    this.users.unshift(newUser);
-    return newUser;
-  }
-
-  updateUser(id, updateData) {
-    const idx = this.users.findIndex(u => u._id === id);
-    if (idx === -1) return null;
-    this.users[idx] = { ...this.users[idx], ...updateData };
-    return this.users[idx];
-  }
-
-  // --- Listings ---
-  getListings(filters = {}) {
-    let result = [...this.listings];
-
-    if (filters.status) {
-      result = result.filter(l => l.status === filters.status);
-    } else {
-      result = result.filter(l => l.status === 'active');
-    }
-
-    if (filters.category && filters.category !== 'All') {
-      result = result.filter(l => l.category.toLowerCase() === filters.category.toLowerCase());
-    }
-
-    if (filters.state && filters.state !== 'All') {
-      result = result.filter(l => l.location.state.toLowerCase() === filters.state.toLowerCase());
-    }
-
-    if (filters.district && filters.district !== 'All') {
-      result = result.filter(l => l.location.district.toLowerCase() === filters.district.toLowerCase());
-    }
-
-    if (filters.quality && filters.quality !== 'All') {
-      result = result.filter(l => l.quality.toLowerCase().includes(filters.quality.toLowerCase()));
-    }
-
-    if (filters.organicOnly === 'true' || filters.organicOnly === true) {
-      result = result.filter(l => l.farmingMethod.toLowerCase().includes('organic'));
-    }
-
-    if (filters.verifiedOnly === 'true' || filters.verifiedOnly === true) {
-      result = result.filter(l => l.farmerVerified === true);
-    }
-
-    if (filters.minPrice) {
-      result = result.filter(l => l.price >= Number(filters.minPrice));
-    }
-
-    if (filters.maxPrice) {
-      result = result.filter(l => l.price <= Number(filters.maxPrice));
-    }
-
-    if (filters.search) {
-      const q = filters.search.toLowerCase();
-      result = result.filter(l => 
-        l.cropName.toLowerCase().includes(q) ||
-        l.variety.toLowerCase().includes(q) ||
-        l.location.state.toLowerCase().includes(q) ||
-        l.location.district.toLowerCase().includes(q) ||
-        l.farmerName.toLowerCase().includes(q) ||
-        l.description.toLowerCase().includes(q)
-      );
-    }
-
-    if (filters.farmerId) {
-      result = result.filter(l => l.farmerId === filters.farmerId);
-    }
-
-    // Sorting
-    if (filters.sortBy === 'price_asc') {
-      result.sort((a, b) => a.price - b.price);
-    } else if (filters.sortBy === 'price_desc') {
-      result.sort((a, b) => b.price - a.price);
-    } else if (filters.sortBy === 'quantity_desc') {
-      result.sort((a, b) => b.quantity - a.quantity);
-    } else if (filters.sortBy === 'harvest_soon') {
-      result.sort((a, b) => new Date(a.harvestDate) - new Date(b.harvestDate));
-    } else {
-      // Default: recently listed
-      result.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-    }
-
-    return result;
-  }
-
-  getListingById(id) {
-    const listing = this.listings.find(l => l._id === id);
-    if (listing) {
-      listing.viewsCount = (listing.viewsCount || 0) + 1;
-    }
-    return listing;
-  }
-
-  createListing(listingData) {
-    const newListing = {
-      _id: `list_${uuidv4().slice(0, 8)}`,
-      viewsCount: 0,
-      inquiriesCount: 0,
-      status: 'active',
-      createdAt: new Date(),
-      ...listingData
-    };
-    this.listings.unshift(newListing);
-    return newListing;
-  }
-
-  updateListing(id, updateData) {
-    const idx = this.listings.findIndex(l => l._id === id);
-    if (idx === -1) return null;
-    this.listings[idx] = { ...this.listings[idx], ...updateData };
-    return this.listings[idx];
-  }
-
-  deleteListing(id) {
-    const idx = this.listings.findIndex(l => l._id === id);
-    if (idx === -1) return false;
-    this.listings.splice(idx, 1);
-    return true;
-  }
-
-  // --- Prices ---
-  getAllPrices(filters = {}) {
-    let result = [...this.prices];
-    if (filters.crop && filters.crop !== 'All') {
-      result = result.filter(p => p.crop.toLowerCase().includes(filters.crop.toLowerCase()));
-    }
-    if (filters.state && filters.state !== 'All') {
-      result = result.filter(p => p.state.toLowerCase() === filters.state.toLowerCase());
-    }
-    if (filters.district && filters.district !== 'All') {
-      result = result.filter(p => p.district.toLowerCase() === filters.district.toLowerCase());
-    }
-    return result;
-  }
-
-  getPriceByCrop(cropName) {
-    return this.prices.find(p => p.crop.toLowerCase().includes(cropName.toLowerCase())) || this.prices[0];
-  }
-
-  // --- Inquiries ---
-  getInquiriesByUser(userId, role) {
-    if (role === 'farmer') {
-      return this.inquiries.filter(i => i.farmerId === userId);
-    } else if (role === 'buyer') {
-      return this.inquiries.filter(i => i.buyerId === userId);
-    }
-    return this.inquiries;
-  }
-
-  getInquiryById(id) {
-    return this.inquiries.find(i => i._id === id);
-  }
-
-  createInquiry(inquiryData) {
-    const newInquiry = {
-      _id: `inq_${uuidv4().slice(0, 8)}`,
-      status: 'pending',
-      negotiationHistory: [],
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      ...inquiryData
-    };
-    this.inquiries.unshift(newInquiry);
-
-    // Update listing inquiriesCount
-    const listing = this.listings.find(l => l._id === inquiryData.listingId);
-    if (listing) {
-      listing.inquiriesCount = (listing.inquiriesCount || 0) + 1;
-    }
-
-    // Add Notification for farmer
-    this.createNotification({
-      userId: inquiryData.farmerId,
-      type: 'inquiry',
-      title: 'New Buyer Inquiry',
-      message: `${inquiryData.buyerName} sent an inquiry for ${inquiryData.requestedQuantity} ${inquiryData.unit || 'Quintals'} of ${inquiryData.cropName}.`,
-      link: '/farmer/inquiries'
-    });
-
-    return newInquiry;
-  }
-
-  updateInquiryStatus(id, status, negotiationMessage = null) {
-    const inquiry = this.inquiries.find(i => i._id === id);
+  async updateInquiryStatus(inquiryId, status, negotiationMessage = null) {
+    const update = { status, updatedAt: new Date() };
+    if (negotiationMessage) update.$push = { negotiationHistory: negotiationMessage };
+    const inquiry = await Inquiry.findByIdAndUpdate(inquiryId, update, { new: true }).lean();
     if (!inquiry) return null;
-    inquiry.status = status;
-    inquiry.updatedAt = new Date();
-    if (negotiationMessage) {
-      inquiry.negotiationHistory.push({
-        ...negotiationMessage,
-        createdAt: new Date()
-      });
-    }
-
-    // Create notification
-    const notifyUser = status === 'accepted' || status === 'rejected' ? inquiry.buyerId : inquiry.farmerId;
-    this.createNotification({
-      userId: notifyUser,
-      type: 'inquiry',
-      title: `Inquiry ${status.toUpperCase()}`,
-      message: `Your inquiry for ${inquiry.cropName} is now marked as ${status}.`,
-      link: inquiry.buyerId === notifyUser ? '/buyer/inquiries' : '/farmer/inquiries'
-    });
-
-    return inquiry;
+    const notifyUser = ['accepted', 'rejected'].includes(status) ? inquiry.buyerId : inquiry.farmerId;
+    await this.createNotification({ userId: notifyUser, type: 'inquiry', title: `Inquiry ${status.toUpperCase()}`, message: `Your inquiry for ${inquiry.cropName} is now marked as ${status}.`, link: sameId(notifyUser, inquiry.buyerId) ? '/buyer/inquiries' : `/farmer/inquiries?inquiry=${inquiry._id}` });
+    return plain(inquiry);
   }
 
-  // --- Messages / Chat ---
-  getConversation(user1, user2, inquiryId) {
-    return this.messages.filter(m => 
-      (m.inquiryId === inquiryId) ||
-      (m.senderId === user1 && m.receiverId === user2) ||
-      (m.senderId === user2 && m.receiverId === user1)
-    ).sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+  async getConversation(user1, user2, inquiryId) { return plainList(await Message.find(inquiryId ? { inquiryId } : { $or: [{ senderId: user1, receiverId: user2 }, { senderId: user2, receiverId: user1 }] }).sort({ createdAt: 1 }).lean()); }
+  async createMessage(data) { const message = await Message.create(data); await this.createNotification({ userId: message.receiverId, type: 'message', title: `New message from ${message.senderName || 'user'}`, message: `${message.message.slice(0, 80)}...`, link: '/chat' }); return plain(message); }
+
+  async getPosts(filters = {}) { return plainList(await CommunityPost.find(filters.category && filters.category !== 'All' ? { category: filters.category } : {}).sort({ pinned: -1, createdAt: -1 }).lean()); }
+  async getPostById(postId) { return plain(await CommunityPost.findById(postId).lean()); }
+  async createPost(data) { return plain(await CommunityPost.create(data)); }
+  async toggleLikePost(postId, userId) {
+    const post = await CommunityPost.findById(postId); if (!post) return null;
+    const index = post.likes.map(String).indexOf(String(userId));
+    if (index >= 0) post.likes.splice(index, 1); else post.likes.push(String(userId));
+    post.likesCount = post.likes.length; await post.save(); return plain(post);
   }
-
-  createMessage(messageData) {
-    const newMsg = {
-      _id: `msg_${uuidv4().slice(0, 8)}`,
-      read: false,
-      createdAt: new Date(),
-      ...messageData
-    };
-    this.messages.push(newMsg);
-
-    this.createNotification({
-      userId: messageData.receiverId,
-      type: 'message',
-      title: `New message from ${messageData.senderName || 'user'}`,
-      message: messageData.message.slice(0, 80) + '...',
-      link: '/chat'
-    });
-
-    return newMsg;
-  }
-
-  // --- Community Posts ---
-  getPosts(filters = {}) {
-    let result = [...this.posts];
-    if (filters.category && filters.category !== 'All') {
-      result = result.filter(p => p.category.toLowerCase() === filters.category.toLowerCase());
-    }
-    if (filters.search) {
-      const q = filters.search.toLowerCase();
-      result = result.filter(p => 
-        p.title.toLowerCase().includes(q) || 
-        p.content.toLowerCase().includes(q) ||
-        p.cropTag.toLowerCase().includes(q) ||
-        p.authorName.toLowerCase().includes(q)
-      );
-    }
-    return result.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || new Date(b.createdAt) - new Date(a.createdAt));
-  }
-
-  getPostById(id) {
-    return this.posts.find(p => p._id === id);
-  }
-
-  createPost(postData) {
-    const newPost = {
-      _id: `post_${uuidv4().slice(0, 8)}`,
-      likes: [],
-      likesCount: 0,
-      comments: [],
-      commentsCount: 0,
-      sharesCount: 0,
-      pinned: false,
-      createdAt: new Date(),
-      ...postData
-    };
-    this.posts.unshift(newPost);
-    return newPost;
-  }
-
-  toggleLikePost(postId, userId) {
-    const post = this.posts.find(p => p._id === postId);
-    if (!post) return null;
-    const idx = post.likes.indexOf(userId);
-    if (idx === -1) {
-      post.likes.push(userId);
-      post.likesCount = post.likes.length;
-    } else {
-      post.likes.splice(idx, 1);
-      post.likesCount = post.likes.length;
-    }
-    return post;
-  }
-
-  addComment(postId, commentData) {
-    const post = this.posts.find(p => p._id === postId);
-    if (!post) return null;
-    const newComment = {
-      _id: `cmt_${uuidv4().slice(0, 6)}`,
-      createdAt: new Date(),
-      ...commentData
-    };
-    post.comments.push(newComment);
-    post.commentsCount = post.comments.length;
-    return post;
-  }
-
-  deletePost(postId) {
-    const idx = this.posts.findIndex(p => p._id === postId);
-    if (idx === -1) return false;
-    this.posts.splice(idx, 1);
-    return true;
-  }
-
-  // --- Reviews ---
-  getReviewsForUser(userId) {
-    return this.reviews.filter(r => r.reviewedUserId === userId);
-  }
-
-  createReview(reviewData) {
-    const newReview = {
-      _id: `rev_${uuidv4().slice(0, 8)}`,
-      createdAt: new Date(),
-      ...reviewData
-    };
-    this.reviews.unshift(newReview);
-    return newReview;
-  }
-
-  // --- Notifications ---
-  getNotifications(userId) {
-    return this.notifications
-      .filter(n => n.userId === userId)
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-  }
-
-  createNotification(notifData) {
-    const notif = {
-      _id: `notif_${uuidv4().slice(0, 8)}`,
-      read: false,
-      createdAt: new Date(),
-      ...notifData
-    };
-    this.notifications.unshift(notif);
-    return notif;
-  }
-
-  markNotificationAsRead(id) {
-    const notif = this.notifications.find(n => n._id === id);
-    if (notif) notif.read = true;
-    return notif;
-  }
-
-  markAllNotificationsAsRead(userId) {
-    this.notifications.filter(n => n.userId === userId).forEach(n => n.read = true);
-    return true;
-  }
-
-  // --- Reports ---
-  getReports() {
-    return this.reports;
-  }
-
-  createReport(reportData) {
-    const newReport = {
-      _id: `rep_${uuidv4().slice(0, 8)}`,
-      status: 'pending',
-      createdAt: new Date(),
-      ...reportData
-    };
-    this.reports.unshift(newReport);
-    return newReport;
-  }
-
-  resolveReport(id, status, adminNotes = '') {
-    const report = this.reports.find(r => r._id === id);
-    if (report) {
-      report.status = status;
-      report.adminNotes = adminNotes;
-    }
-    return report;
-  }
-
-  // --- Admin Stats ---
-  getAdminStats() {
-    return {
-      totalFarmers: this.users.filter(u => u.role === 'farmer').length,
-      totalBuyers: this.users.filter(u => u.role === 'buyer').length,
-      activeListings: this.listings.filter(l => l.status === 'active').length,
-      totalInquiries: this.inquiries.length,
-      acceptedDeals: this.inquiries.filter(i => i.status === 'accepted').length,
-      communityPosts: this.posts.length,
-      pendingReports: this.reports.filter(r => r.status === 'pending').length,
-      priceDatasets: this.prices.length,
-      totalEstimatedVolume: '14,250 Quintals'
-    };
+  async addComment(postId, data) { return plain(await CommunityPost.findByIdAndUpdate(postId, { $push: { comments: data }, $inc: { commentsCount: 1 } }, { new: true }).lean()); }
+  async deletePost(postId) { return Boolean(await CommunityPost.findByIdAndDelete(postId)); }
+  async getReviewsForUser(userId) { return plainList(await Review.find({ reviewedUserId: userId }).sort({ createdAt: -1 }).lean()); }
+  async createReview(data) { return plain(await Review.create(data)); }
+  async getNotifications(userId) { return plainList(await Notification.find({ userId }).sort({ createdAt: -1 }).lean()); }
+  async createNotification(data) { return plain(await Notification.create(data)); }
+  async markNotificationAsRead(notificationId) { return plain(await Notification.findByIdAndUpdate(notificationId, { read: true }, { new: true }).lean()); }
+  async markAllNotificationsAsRead(userId) { await Notification.updateMany({ userId }, { read: true }); return true; }
+  async getReports() { return plainList(await Report.find().sort({ createdAt: -1 }).lean()); }
+  async createReport(data) { return plain(await Report.create(data)); }
+  async resolveReport(reportId, status, adminNotes = '') { return plain(await Report.findByIdAndUpdate(reportId, { status, adminNotes }, { new: true }).lean()); }
+  async getAdminStats() {
+    const [totalFarmers, totalBuyers, activeListings, totalInquiries, acceptedDeals, communityPosts, pendingReports, priceDatasets] = await Promise.all([
+      User.countDocuments({ role: 'farmer' }),
+      User.countDocuments({ role: 'buyer' }),
+      CropListing.countDocuments({ status: 'active' }),
+      Inquiry.countDocuments(),
+      Inquiry.countDocuments({ status: 'accepted' }),
+      CommunityPost.countDocuments(),
+      Report.countDocuments({ status: 'pending' }),
+      PriceData.countDocuments()
+    ]);
+    return { totalFarmers, totalBuyers, activeListings, totalInquiries, acceptedDeals, communityPosts, pendingReports, priceDatasets, totalEstimatedVolume: '0 Quintals' };
   }
 }
 
-export const dataStore = new DataStore();
+export const dataStore = new MongoDataStore();
