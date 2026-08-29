@@ -80,19 +80,17 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Start Server
-const startServer = async () => {
-  try {
-    await connectDB();
-  } catch {
-    console.error('Starting API without database access. MongoDB reconnection will continue in the background.');
-    setInterval(() => {
-      if (!getDbStatus()) connectDB().catch(() => {});
-    }, 30000);
-  }
+// Connect to MongoDB once (works for both local and Vercel serverless)
+connectDB().catch(() => {
+  console.error('Initial MongoDB connection failed. Reconnection will be attempted on each request.');
+});
+
+// For local development: start the HTTP server
+if (process.env.NODE_ENV !== 'production') {
   app.listen(PORT, () => {
     console.log(`🌾 KisanConnect Backend Server running on http://localhost:${PORT}`);
   });
-};
+}
 
-startServer();
+// Export for Vercel serverless
+export default app;
